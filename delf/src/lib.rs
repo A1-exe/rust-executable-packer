@@ -26,14 +26,15 @@ impl Machine {
   pub fn parse(i: parse::Input) -> parse::Result<Self> {
     use nom::{
         combinator::map_res,
-        error::{context, ErrorKind},
+        error::ErrorKind,
         number::complete::le_u16,
+        Err,
     };
 
-    context(
-      "Machine",
-      map_res(le_u16, |x| Self::try_from(x).map_err(|_| ErrorKind::Alt)),
-    )(i)
+    map_res(le_u16, |x| match Self::try_from(x) {
+      Ok(x) => Ok(x),
+      Err(_) => Err(ErrorKind::Alt),
+    })(i)
   }
 }
 
