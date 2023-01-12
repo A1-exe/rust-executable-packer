@@ -22,6 +22,18 @@ pub enum Machine {
   X86_64 = 0x3E,
 }
 
+pub struct HexDump<'a>(&'a [u8]);
+
+use std::fmt;
+impl<'a> fmt::Debug for HexDump<'a> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    for &x in self.0.iter().take(20) {
+      write!(f, "{:02x} ", x)?;
+    }
+    Ok(())
+  }
+}
+
 #[derive(Debug)]
 pub struct File {
   pub r#type: Type,
@@ -57,6 +69,21 @@ impl File {
     ))(i)?;
 
     Ok((i, Self { r#type, machine }))
+  }
+
+  pub fn parse_or_print_error(i: parse::Input) -> Option<Self> {
+    match Self::parse(i) {
+      Ok((_, file)) => Some(file),
+      Err(nom::Err::Failure(err)) | Err(nom::Err::Error(err)) => {
+        eprintln!("Parsing failed:");
+        for (input, err) in err.errors {
+          eprintln!("{:?} at:", err);
+          eprintln!("{:?}", HexDump(input));
+        }
+        None
+      },
+      Err(_) => panic!("unexpected nom error"),
+    }
   }
 }
 
