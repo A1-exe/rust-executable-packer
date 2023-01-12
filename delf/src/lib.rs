@@ -97,8 +97,6 @@ impl File {
       bytes::complete::{tag, take},
       error::context,
       sequence::tuple,
-      combinator::map,
-      number::complete::le_u16,
     };
     
     let (i, _) = tuple((
