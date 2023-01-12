@@ -14,27 +14,11 @@ pub enum Type {
   Core = 0x4,
 }
 
-impl Type {
-  fn to_u16(&self) -> u16 {
-    match self {
-      Self::None => 0,
-      Self::Rel => 1,
-      Self::Exec => 2,
-      Self::Dyn => 3,
-      Self::Core => 4,
-    }
-  }
-
-  pub fn from_u16(x: u16) -> Option<Self> {
-    match x {
-      0 => Some(Self::None),
-      1 => Some(Self::Rel),
-      2 => Some(Self::Exec),
-      3 => Some(Self::Dyn),
-      4 => Some(Self::Core),
-      _ => None,
-    }
-  }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, TryFromPrimitive)]
+#[repr(u16)]
+pub enum Machine {
+  X86 = 0x03,
+  X86_64 = 0x3E,
 }
 
 #[derive(Debug)]
@@ -70,8 +54,13 @@ impl File {
 
 #[cfg(test)]
 mod tests {
+  use super::Machine;
+  use std::convert::TryFrom;
+
   #[test]
-  fn type_to_u16(){
-    assert_eq!(super::Type::Dyn as u16, 0x3);
+  fn try_enums() {
+    assert_eq!(Machine::X86_64 as u16, 0x3E);
+    assert_eq!(Machine::try_from(0x3E), Ok(Machine::X86_64));
+    assert_eq!(Machine::try_from(0xFA), Err(0xFA));
   }
 }
