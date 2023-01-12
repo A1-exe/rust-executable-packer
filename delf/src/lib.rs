@@ -18,8 +18,23 @@ pub enum Type {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u16)]
 pub enum Machine {
-  X86 = 0x03,
-  X86_64 = 0x3E,
+    X86 = 0x03,
+    X86_64 = 0x3e,
+}
+
+impl Machine {
+  pub fn parse(i: parse::Input) -> parse::Result<Self> {
+    use nom::{
+        combinator::map_res,
+        error::{context, ErrorKind},
+        number::complete::le_u16,
+    };
+
+    context(
+      "Machine",
+      map_res(le_u16, |x| Self::try_from(x).map_err(|_| ErrorKind::Alt)),
+    )(i)
+  }
 }
 
 pub struct HexDump<'a>(&'a [u8]);
