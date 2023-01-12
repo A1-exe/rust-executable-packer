@@ -22,21 +22,8 @@ pub enum Machine {
     X86_64 = 0x3e,
 }
 
-impl Machine {
-  pub fn parse(i: parse::Input) -> parse::Result<Self> {
-    use nom::{
-        combinator::map_res,
-        error::{context, ErrorKind},
-        number::complete::le_u16,
-    };
-
-    context(
-      "Machine",
-      map_res(le_u16, |x| Self::try_from(x).map_err(|_| ErrorKind::Alt)),
-    )(i)
-  }
-}
-
+impl_parse_for_enum!(Type, le_u16);
+impl_parse_for_enum!(Machine, le_u16);
 pub struct HexDump<'a>(&'a [u8]);
 
 use std::fmt;
@@ -78,10 +65,7 @@ impl File {
       context("Padding", take(8_usize)),
     ))(i)?;
 
-    let (i, (r#type, machine)) = tuple((
-      context("Type", map(le_u16, |x| Type::try_from(x).unwrap())),
-      context("Machine", map(le_u16, |x| Machine::try_from(x).unwrap())),
-    ))(i)?;
+    let (i, (r#type, machine)) = tuple((Type::parse, Machine::parse))(i)?;
 
     Ok((i, Self { r#type, machine }))
   }
