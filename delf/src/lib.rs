@@ -4,6 +4,7 @@ mod parse;
 
 use std::convert::TryFrom;
 use derive_try_from_primitive::TryFromPrimitive;
+use derive_more::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u16)]
@@ -24,6 +25,51 @@ pub enum Machine {
 
 impl_parse_for_enum!(Type, le_u16);
 impl_parse_for_enum!(Machine, le_u16);
+
+// "Add" and "Sub" are in `derive_more`
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Add, Sub)]
+pub struct Addr(pub u64);
+
+impl fmt::Debug for Addr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:08x}", self.0)
+    }
+}
+
+impl fmt::Display for Addr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+// This will come in handy when serializing
+impl Into<u64> for Addr {
+    fn into(self) -> u64 {
+        self.0
+    }
+}
+
+// This will come in handy when indexing / sub-slicing slices
+impl Into<usize> for Addr {
+    fn into(self) -> usize {
+        self.0 as usize
+    }
+}
+
+// This will come in handy when parsing
+impl From<u64> for Addr {
+    fn from(x: u64) -> Self {
+        Self(x)
+    }
+}
+
+impl Addr {
+    pub fn parse(i: parse::Input) -> parse::Result<Self> {
+        use nom::{combinator::map, number::complete::le_u64};
+        map(le_u64, From::from)(i)
+    }
+}
+
 pub struct HexDump<'a>(&'a [u8]);
 
 use std::fmt;
@@ -40,6 +86,7 @@ impl<'a> fmt::Debug for HexDump<'a> {
 pub struct File {
   pub r#type: Type,
   pub machine: Machine,
+  pub entry_point: Addr,
 }
 
 impl File {
@@ -67,7 +114,18 @@ impl File {
 
     let (i, (r#type, machine)) = tuple((Type::parse, Machine::parse))(i)?;
 
-    Ok((i, Self { r#type, machine }))
+    // this 32-bit integer should always be set to 1 in the current
+    // version of ELF, see the diagram. We don't *have* to check it,
+    // but it's so easy to, let's anyway!
+    use nom::{combinator::verify, number::complete::le_u32};
+    let (i, _) = context("Version (bis)", verify(le_u32, |&x| x == 1))(i)?;
+    let (i, entry_point) = Addr::parse(i)?;
+
+    Ok((i, Self { 
+      r#type,
+      machine,
+      entry_point
+    }))
   }
 
   pub fn parse_or_print_error(i: parse::Input) -> Option<Self> {
