@@ -77,8 +77,10 @@ impl File {
       Err(nom::Err::Failure(err)) | Err(nom::Err::Error(err)) => {
         eprintln!("Parsing failed:");
         for (input, err) in err.errors {
-          eprintln!("{:?} at:", err);
-          eprintln!("{:?}", HexDump(input));
+          use nom::Offset;
+          let offset = i.offset(input);
+          eprintln!("{:?} at position {}:", err, offset);
+          eprintln!("{:>08x}: {:?}", offset, HexDump(input));
         }
         None
       },
