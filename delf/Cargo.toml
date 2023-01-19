@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 derive-try-from-primitive = "1"
 derive_more = "0.99"
-nom = "7.1.2"
+enumflags2 = "0.6"
+nom = "5"
