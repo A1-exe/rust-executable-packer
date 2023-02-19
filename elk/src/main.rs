@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   // ndisasm(&code_ph.data[..], file.entry_point)?;
 
 
-  let base = 0x400_000_usize;
+  let base = 0x400000_usize;
 
   println!("Mapping {:?} into memory...", input_path);
   // we'll need to hold onto our "mmap::MemoryMap", because dropping them
@@ -45,6 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     .program_headers
     .iter()
     .filter(|ph| ph.r#type == delf::SegmentType::Load)
+    .filter(|ph| ph.mem_range().end > ph.mem_range().start)
   {
     let mem_range = ph.mem_range();
     println!("Mapping segments @ {:?} with {:?}", mem_range, ph.flags);
@@ -68,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   
     println!("Copying segment data...");
     {
-      let dst = unsafe { std::slice::from_raw_parts_mut(addr, ph.data.len()) };
+      let dst = unsafe { std::slice::from_raw_parts_mut(addr.add(padding), ph.data.len()) };
       dst.copy_from_slice(&ph.data[..]);
     }
 
@@ -91,7 +92,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     mappings.push(map);
   }
 
-  println!("Executing {:?} in memory...", input_path);
+  println!("\nExecuting {:?} in memory...", input_path);
   let code = &code_ph.data[..];
   unsafe {
     protect(code.as_ptr(), code.len(), Protection::READ_WRITE_EXECUTE)?;
@@ -101,9 +102,12 @@ fn main() -> Result<(), Box<dyn Error>> {
   let entry_point = unsafe { code.as_ptr().add(entry_offset.into()) };
   println!("       code  @ {:?}", code.as_ptr());
   println!("entry offset @ {:?}", entry_offset);
-  println!("entry point  @ {:?}", entry_point);
+  println!("entry point  @ {:?}\n", entry_point);
+
+  println!("Jumping to entry point @ {:?}...", file.entry_point);
+  pause("jmp")?;
   unsafe {
-      jmp(entry_point);
+    jmp((file.entry_point.0 as usize + base) as _);
   }
 
   Ok(())
