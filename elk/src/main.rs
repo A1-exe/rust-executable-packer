@@ -23,17 +23,19 @@ fn main() -> Result<(), Box<dyn Error>> {
   //   return Err("process did not exit successfully".into());
   // }
 
-  println!("Disassembling {:?}...", input_path);
+  // println!("Disassembling {:?}...", input_path);
   let code_ph = file
       .program_headers
       .iter()
       .find(|ph| ph.mem_range().contains(&file.entry_point))
       .expect("segment with entry point not found");
 
-  ndisasm(&code_ph.data[..], file.entry_point)?;
+  // ndisasm(&code_ph.data[..], file.entry_point)?;
+
+
+  let base = 0x400_000_usize;
 
   println!("Mapping {:?} into memory...", input_path);
-
   // we'll need to hold onto our "mmap::MemoryMap", because dropping them
   // unmaps the memory
   let mut mappings = Vec::new();
@@ -49,9 +51,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     // note: mmap-ing would fail if the segments weren't aligned on page boundaries,
     // but luckily, that is the case in the file already. That is not a coincidence.
     let len: usize = (mem_range.end - mem_range.start).into();
+    
+    // add base offset to the program header's virtual address
+    let start: usize = mem_range.start.0 as usize + base;
+    let aligned_start: usize = align_lo(start);
+    let padding = start - aligned_start;
+    let len = len + padding;
+
     // `as` is the "cast" operator, and `_` is a placeholder to force rustc
     // to infer the tpe based on other hints
-    let addr: *mut u8 = mem_range.start.0 as _;
+    let addr: *mut u8 = aligned_start as _;
+    println!("Addr: {:p}, Padding: {:08x}", addr, padding);
+
     // at first, we want the memory area to be writable, so we can copy to it
     let map = MemoryMap::new(len, &[MapOption::MapWritable, MapOption::MapAddr(addr)])?;
   
@@ -130,4 +141,11 @@ fn pause(reason: &str) -> Result<(), Box<dyn Error>> {
       std::io::stdin().read_line(&mut s)?;
   }
   Ok(())
+}
+
+/**
+ * Truncates a usize value to the left-adjacent (low) 4KiB boundary.
+ */
+fn align_lo(x: usize) -> usize {
+  x & !0xFFF
 }
