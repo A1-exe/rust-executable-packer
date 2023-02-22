@@ -276,6 +276,11 @@ pub enum DynamicTag {
   Flags =  0x0000001e,
   Flags1 = 0x6ffffffb,
   RelACount = 0x6ffffff9,
+  VerSym = 0x6ffffff0,
+  VerDef = 0x6ffffffc,
+  VerDefNum = 0x6ffffffd,
+  VerNeed = 0x6ffffffe,
+  // VerNeedNum = 0x6fffffff,
 }
 impl_parse_for_enum!(DynamicTag, le_u64);
 
